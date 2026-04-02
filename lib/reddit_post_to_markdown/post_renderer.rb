@@ -4,13 +4,16 @@ module RedditPostToMarkdown
   class PostRenderer
     COLORS = ["🟩", "🟨", "🟧", "🟦", "🟪", "🟥", "🟫", "⬛️", "⬜️"].freeze
 
-    def self.render(post_data, replies_data)
-      new(post_data, replies_data).render
+    DEFAULT_FILTERED_MESSAGE = "REMOVED DUE TO CUSTOM FILTER(S)"
+
+    def self.render(post_data, replies_data, filters: {})
+      new(post_data, replies_data, filters).render
     end
 
-    def initialize(post_data, replies_data)
+    def initialize(post_data, replies_data, filters = {})
       @post_data    = post_data
       @replies_data = replies_data
+      @filters      = filters || {}
     end
 
     def render
@@ -107,6 +110,29 @@ module RedditPostToMarkdown
         .gsub("&quot;", '"')
     end
 
+    def apply_filter(author, body, ups)
+      return body if @filters.nil? || @filters.empty?
+
+      message    = @filters[:message]     || DEFAULT_FILTERED_MESSAGE
+      keywords   = Array(@filters[:keywords])
+      authors    = Array(@filters[:authors])
+      min_ups    = @filters[:min_upvotes] || 0
+      regexes    = Array(@filters[:regexes])
+
+      keywords.each do |kw|
+        return message if body.downcase.include?(kw.to_s.downcase)
+      end
+
+      return message if authors.include?(author)
+      return message if ups < min_ups
+
+      regexes.each do |regex|
+        return message if regex.match?(body)
+      end
+
+      body
+    end
+
     def decode_body(text)
       text
         .gsub("&gt;", ">")
@@ -193,7 +219,8 @@ module RedditPostToMarkdown
       if body == "[deleted]"
         lines << "\tComment deleted by user\n\n"
       else
-        formatted = decode_body(body)
+        filtered  = apply_filter(author, body, ups)
+        formatted = decode_body(filtered)
         formatted = linkify_mentions(formatted)
         formatted = formatted.gsub("\n", "\n\t")
         lines << "\t#{formatted}\n\n"
@@ -227,7 +254,8 @@ module RedditPostToMarkdown
       if body == "[deleted]"
         lines << "#{indent}\tComment deleted by user\n\n"
       else
-        formatted = decode_child_body(body)
+        filtered  = apply_filter(author, body, ups)
+        formatted = decode_child_body(filtered)
         formatted = linkify_mentions(formatted)
         formatted = formatted.gsub("\n", "\n#{indent}\t")
         lines << "#{indent}\t#{formatted}\n\n"

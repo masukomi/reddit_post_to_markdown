@@ -93,6 +93,34 @@ RSpec.describe RedditPostToMarkdown do
         .to raise_error(RedditPostToMarkdown::FetchError)
     end
 
+    context "with filters" do
+      it "replaces comments matching a keyword filter" do
+        out = described_class.convert(post_url, filters: { keywords: ["Great"] })
+        expect(out).to include("REMOVED DUE TO CUSTOM FILTER(S)")
+        expect(out).not_to include("Great post!")
+      end
+
+      it "replaces comments from a filtered author" do
+        out = described_class.convert(post_url, filters: { authors: ["commenter"] })
+        expect(out).to include("REMOVED DUE TO CUSTOM FILTER(S)")
+      end
+
+      it "replaces comments below min_upvotes" do
+        out = described_class.convert(post_url, filters: { min_upvotes: 100 })
+        expect(out).to include("REMOVED DUE TO CUSTOM FILTER(S)")
+      end
+
+      it "uses a custom message when provided" do
+        out = described_class.convert(post_url, filters: { keywords: ["Great"], message: "[REDACTED]" })
+        expect(out).to include("[REDACTED]")
+      end
+
+      it "passes through comments that don't match the filter" do
+        out = described_class.convert(post_url, filters: { keywords: ["nonexistent"] })
+        expect(out).to include("Great post!")
+      end
+    end
+
     it "raises InvalidResponseError when response is not a 2-element array" do
       stub_request(:get, "#{post_url}.json")
         .to_return(

@@ -372,6 +372,182 @@ RSpec.describe RedditPostToMarkdown::PostRenderer do
     end
   end
 
+  # ─── Filters ─────────────────────────────────────────────────────────────────
+
+  describe "#apply_filter" do
+    subject(:renderer) { described_class.new(post_data, [], filters) }
+
+    let(:message) { "REMOVED DUE TO CUSTOM FILTER(S)" }
+
+    context "with no filters" do
+      let(:filters) { {} }
+
+      it "returns the original body unchanged" do
+        expect(renderer.send(:apply_filter, "user", "hello world", 10)).to eq("hello world")
+      end
+    end
+
+    context "keyword filter" do
+      let(:filters) { { keywords: ["spam"] } }
+
+      it "replaces body containing the keyword (case-insensitive)" do
+        expect(renderer.send(:apply_filter, "user", "This is SPAM content", 10))
+          .to eq(message)
+      end
+
+      it "replaces body with keyword in mixed case" do
+        expect(renderer.send(:apply_filter, "user", "Spam spam spam", 10))
+          .to eq(message)
+      end
+
+      it "leaves body without the keyword unchanged" do
+        expect(renderer.send(:apply_filter, "user", "totally normal comment", 10))
+          .to eq("totally normal comment")
+      end
+
+      it "matches keyword as a substring" do
+        expect(renderer.send(:apply_filter, "user", "nospamhere", 10))
+          .to eq(message)
+      end
+    end
+
+    context "author filter" do
+      let(:filters) { { authors: ["bot_account", "spammer"] } }
+
+      it "replaces comments from a filtered author" do
+        expect(renderer.send(:apply_filter, "bot_account", "hello", 10))
+          .to eq(message)
+      end
+
+      it "leaves comments from non-filtered authors unchanged" do
+        expect(renderer.send(:apply_filter, "normal_user", "hello", 10))
+          .to eq("hello")
+      end
+
+      it "is case-sensitive for author names" do
+        expect(renderer.send(:apply_filter, "Bot_Account", "hello", 10))
+          .to eq("hello")
+      end
+    end
+
+    context "min_upvotes filter" do
+      let(:filters) { { min_upvotes: 5 } }
+
+      it "replaces comments with fewer upvotes than the minimum" do
+        expect(renderer.send(:apply_filter, "user", "low score comment", 3))
+          .to eq(message)
+      end
+
+      it "leaves comments that meet the minimum upvotes unchanged" do
+        expect(renderer.send(:apply_filter, "user", "ok comment", 5))
+          .to eq("ok comment")
+      end
+
+      it "leaves comments above the minimum upvotes unchanged" do
+        expect(renderer.send(:apply_filter, "user", "popular comment", 100))
+          .to eq("popular comment")
+      end
+    end
+
+    context "regex filter" do
+      let(:filters) { { regexes: [/buy now/i, /\bfree\b/] } }
+
+      it "replaces body matching a regex pattern" do
+        expect(renderer.send(:apply_filter, "user", "Click here to Buy Now!", 10))
+          .to eq(message)
+      end
+
+      it "replaces body matching a second regex" do
+        expect(renderer.send(:apply_filter, "user", "get it for free today", 10))
+          .to eq(message)
+      end
+
+      it "leaves body not matching any regex unchanged" do
+        expect(renderer.send(:apply_filter, "user", "just a normal comment", 10))
+          .to eq("just a normal comment")
+      end
+    end
+
+    context "custom message" do
+      let(:filters) { { keywords: ["bad"], message: "[HIDDEN]" } }
+
+      it "uses the custom filtered_message when provided" do
+        expect(renderer.send(:apply_filter, "user", "this is bad content", 10))
+          .to eq("[HIDDEN]")
+      end
+    end
+
+    context "default filtered message" do
+      let(:filters) { { keywords: ["spam"] } }
+
+      it "uses the default message when none is provided" do
+        expect(renderer.send(:apply_filter, "user", "spam", 10))
+          .to eq("REMOVED DUE TO CUSTOM FILTER(S)")
+      end
+    end
+
+    context "filter precedence" do
+      let(:filters) { { keywords: ["bad"], authors: ["baduser"], min_upvotes: 3, message: "NOPE" } }
+
+      it "keywords are checked first" do
+        expect(renderer.send(:apply_filter, "gooduser", "bad content", 100)).to eq("NOPE")
+      end
+
+      it "authors are checked after keywords" do
+        expect(renderer.send(:apply_filter, "baduser", "good content", 100)).to eq("NOPE")
+      end
+
+      it "upvotes are checked after authors" do
+        expect(renderer.send(:apply_filter, "gooduser", "good content", 1)).to eq("NOPE")
+      end
+    end
+  end
+
+  describe "filters applied during rendering" do
+    let(:filters) { { keywords: ["hidden"], min_upvotes: 5, authors: ["banned"] } }
+
+    it "replaces a top-level comment body matching a keyword" do
+      comment = make_comment("body" => "this is hidden content")
+      out = described_class.render(post_data, [comment], filters: filters)
+      expect(out).to include("REMOVED DUE TO CUSTOM FILTER(S)")
+      expect(out).not_to include("this is hidden content")
+    end
+
+    it "replaces a nested comment body matching a keyword" do
+      child = make_child(id: "c2", depth: 1, body: "hidden spam here")
+      top   = make_comment("id" => "c1", "replies" => nested_replies(child))
+      out = described_class.render(post_data, [top], filters: filters)
+      expect(out).to include("REMOVED DUE TO CUSTOM FILTER(S)")
+    end
+
+    it "replaces a top-level comment below the min_upvotes threshold" do
+      comment = make_comment("body" => "low karma comment", "ups" => 2)
+      out = described_class.render(post_data, [comment], filters: filters)
+      expect(out).to include("REMOVED DUE TO CUSTOM FILTER(S)")
+      expect(out).not_to include("low karma comment")
+    end
+
+    it "replaces a top-level comment from a banned author" do
+      comment = make_comment("author" => "banned", "body" => "I am banned")
+      out = described_class.render(post_data, [comment], filters: filters)
+      expect(out).to include("REMOVED DUE TO CUSTOM FILTER(S)")
+      expect(out).not_to include("I am banned")
+    end
+
+    it "does not filter a [deleted] body (handled separately)" do
+      comment = make_comment("body" => "[deleted]")
+      out = described_class.render(post_data, [comment], filters: { keywords: ["deleted"] })
+      expect(out).to include("Comment deleted by user")
+      expect(out).not_to include("REMOVED DUE TO CUSTOM FILTER(S)")
+    end
+
+    it "leaves comments alone when no filter matches" do
+      comment = make_comment("body" => "perfectly fine comment", "ups" => 10)
+      out = described_class.render(post_data, [comment], filters: filters)
+      expect(out).to include("perfectly fine comment")
+    end
+  end
+
   # ─── get_replies (recursive child collector) ────────────────────────────────
 
   describe "#get_replies" do
