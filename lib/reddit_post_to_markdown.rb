@@ -1,0 +1,32 @@
+require_relative "reddit_post_to_markdown/version"
+require_relative "reddit_post_to_markdown/errors"
+require_relative "reddit_post_to_markdown/url_validator"
+require_relative "reddit_post_to_markdown/reddit_client"
+require_relative "reddit_post_to_markdown/post_renderer"
+
+module RedditPostToMarkdown
+  # Downloads a Reddit post and returns it as a Markdown string.
+  #
+  # @param url [String] the URL of a public Reddit post
+  # @return [String] the post and all its comments rendered as Markdown
+  # @raise [NotAPostError] if the URL does not point to a Reddit post
+  # @raise [FetchError] if the HTTP request fails
+  # @raise [InvalidResponseError] if Reddit returns an unexpected JSON structure
+  def self.convert(url)
+    clean = UrlValidator.clean_url(url)
+
+    unless UrlValidator.valid_post_url?(clean)
+      raise NotAPostError, "Not a Reddit post URL: #{url}"
+    end
+
+    data = RedditClient.new.fetch_post(clean)
+
+    post_info = data.dig(0, "data", "children")
+    raise InvalidResponseError, "No post data found in response" if post_info.nil? || post_info.empty?
+
+    post_data    = post_info[0].fetch("data", {})
+    replies_data = data.dig(1, "data", "children") || []
+
+    PostRenderer.render(post_data, replies_data)
+  end
+end
