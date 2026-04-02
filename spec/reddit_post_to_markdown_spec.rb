@@ -93,6 +93,37 @@ RSpec.describe RedditPostToMarkdown do
         .to raise_error(RedditPostToMarkdown::FetchError)
     end
 
+    context "with include_comments: false" do
+      it "omits all comments from the output" do
+        out = described_class.convert(post_url, include_comments: false)
+        expect(out).not_to include("Great post!")
+        expect(out).not_to include("commenter")
+      end
+
+      it "still includes the post title and body" do
+        out = described_class.convert(post_url, include_comments: false)
+        expect(out).to include("## Some Title")
+        expect(out).to include("r/ruby")
+      end
+
+      it "shows 0 replies in the reply count" do
+        out = described_class.convert(post_url, include_comments: false)
+        expect(out).to include("💬 ~ 0 replies")
+      end
+    end
+
+    context "with include_comments: true (default)" do
+      it "includes comments when explicitly true" do
+        out = described_class.convert(post_url, include_comments: true)
+        expect(out).to include("Great post!")
+      end
+
+      it "includes comments when omitted entirely" do
+        out = described_class.convert(post_url)
+        expect(out).to include("Great post!")
+      end
+    end
+
     context "with filters" do
       it "replaces comments matching a keyword filter" do
         out = described_class.convert(post_url, filters: { keywords: ["Great"] })
