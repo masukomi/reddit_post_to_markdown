@@ -1,21 +1,60 @@
 require "time"
 
 module RedditPostToMarkdown
+  # Converts Reddit post data and its comments into a Markdown string.
+  #
+  # The output format matches the {https://github.com/chauduyphanvu/reddit-markdown
+  # reddit-markdown} tool: post header, title, selftext, reply count, and a
+  # depth-indented comment tree with colour-coded emoji indicators.
   class PostRenderer
+    # Colour indicators used to visually distinguish comment nesting depth.
+    # Depth 0 uses the first colour, depth 1 the second, and so on. Depths
+    # beyond the length of the array reuse the last colour.
     COLORS = ["🟩", "🟨", "🟧", "🟦", "🟪", "🟥", "🟫", "⬛️", "⬜️"].freeze
 
+    # Replacement text used when a comment matches a filter and no custom
+    # +:message+ is provided in the filters hash.
     DEFAULT_FILTERED_MESSAGE = "REMOVED DUE TO CUSTOM FILTER(S)"
 
+    # Renders a Reddit post and its comments as a Markdown string.
+    #
+    # This is the primary entry point for the class. It instantiates a renderer
+    # and calls {#render}.
+    #
+    # @param post_data [Hash] the +data+ object from Reddit's post listing JSON,
+    #   containing keys such as +"title"+, +"author"+, +"selftext"+, +"ups"+,
+    #   +"locked"+, +"created_utc"+, and +"subreddit_name_prefixed"+
+    # @param replies_data [Array<Hash>] the +children+ array from Reddit's
+    #   comment listing JSON; each element represents a top-level comment
+    # @param filters [Hash] optional comment filters (see {RedditPostToMarkdown.convert}
+    #   for full key documentation)
+    # @return [String] the fully rendered Markdown
     def self.render(post_data, replies_data, filters: {})
       new(post_data, replies_data, filters).render
     end
 
+    # @param post_data [Hash] Reddit post data hash (see {.render})
+    # @param replies_data [Array<Hash>] top-level comment objects (see {.render})
+    # @param filters [Hash] optional comment filters (see {.render})
     def initialize(post_data, replies_data, filters = {})
       @post_data    = post_data
       @replies_data = replies_data
       @filters      = filters || {}
     end
 
+    # Renders the post and all its comments as a single Markdown string.
+    #
+    # Sections in order:
+    # 1. Post header (subreddit, author, upvotes, timestamp)
+    # 2. Post title as an H2
+    # 3. Link back to the original post
+    # 4. Lock notice (if the thread is locked)
+    # 5. Post body / selftext as a block-quote (if present)
+    # 6. Total reply count
+    # 7. Horizontal rule
+    # 8. Comment tree, depth-indented with tab characters
+    #
+    # @return [String]
     def render
       lines = []
 
@@ -175,7 +214,20 @@ module RedditPostToMarkdown
     end
 
     # Recursively collects all child replies into a flat ordered hash.
-    # Mirrors get_replies() from python/reddit_utils.py.
+    #
+    # Traverses the Reddit comment tree depth-first and returns every
+    # descendant comment keyed by its Reddit comment ID. Comments with empty
+    # or whitespace-only bodies are skipped. Comments deeper than +max_depth+
+    # are skipped unless +max_depth+ is +-1+ (unlimited).
+    #
+    # @param reply_data [Hash] a Reddit comment object containing a nested
+    #   +"replies"+ structure
+    # @param max_depth [Integer] maximum comment depth to collect;
+    #   +-1+ means no limit
+    # @param collected [Hash] accumulator used during recursion; callers
+    #   should omit this argument
+    # @return [Hash{String => Hash}] a hash of
+    #   +id => { depth: Integer, child_reply: Hash }+ in depth-first order
     def get_replies(reply_data, max_depth: -1, collected: {})
       replies_obj = reply_data.dig("data", "replies")
       return collected unless replies_obj.is_a?(Hash)
