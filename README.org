@@ -1,0 +1,131 @@
+#+title: reddit_post_to_markdown
+#+author: masukomi
+
+A Ruby gem that downloads a public Reddit post and converts it — along with all its comments — to Markdown.
+
+* Limitations
+
+- *Posts only.* The gem only works with individual post URLs (e.g. ~reddit.com/r/subreddit/comments/…~). Passing a subreddit listing, a user profile, a search results page, or any other Reddit URL will raise a ~NotAPostError~.
+
+- *Public posts only.* The gem makes unauthenticated requests to Reddit's public JSON API. Posts that require you to be logged in — age-gated content, posts in private subreddits, quarantined communities — will not be accessible.
+
+* Installation
+
+Add to your ~Gemfile~:
+
+#+begin_src ruby
+gem "reddit_post_to_markdown"
+#+end_src
+
+Or install directly:
+
+#+begin_src shell
+gem install reddit_post_to_markdown
+#+end_src
+
+* Usage
+
+** Basic
+
+#+begin_src ruby
+require "reddit_post_to_markdown"
+
+markdown = RedditPostToMarkdown.convert("https://www.reddit.com/r/ruby/comments/abc123/some_title/")
+puts markdown
+#+end_src
+
+** Without comments
+
+#+begin_src ruby
+markdown = RedditPostToMarkdown.convert(url, include_comments: false)
+#+end_src
+
+** Filtering comments
+
+Pass a ~filters:~ hash to suppress comments that match any of the criteria below. A matching comment has its body replaced with the ~:message~ string rather than being removed entirely, so the thread structure is preserved.
+
+#+begin_src ruby
+markdown = RedditPostToMarkdown.convert(
+  url,
+  filters: {
+    keywords:    ["spam", "buy now"],     # case-insensitive substring match
+    authors:     ["AutoModerator"],       # exact username (case-sensitive)
+    min_upvotes: 5,                       # comments below this score are replaced
+    regexes:     [/\bfree\b/i],           # Array of Regexp objects
+    message:     "[ removed by filter ]"  # optional; see default below
+  }
+)
+#+end_src
+
+All keys are optional. The default replacement message is ~"REMOVED DUE TO CUSTOM FILTER(S)"~.
+
+Filters are applied in this order: keywords → authors → min_upvotes → regexes. The first match wins.
+
+Note: ~[deleted]~ comments are handled before filtering and always render as ~Comment deleted by user~ regardless of filter settings.
+
+** Combining options
+
+#+begin_src ruby
+markdown = RedditPostToMarkdown.convert(
+  url,
+  include_comments: true,
+  filters: { min_upvotes: 10 }
+)
+#+end_src
+
+** Errors
+
+| Exception                                  | When raised                                               |
+|--------------------------------------------+-----------------------------------------------------------|
+| ~RedditPostToMarkdown::NotAPostError~      | URL does not point to a Reddit post                       |
+| ~RedditPostToMarkdown::FetchError~         | HTTP request failed (non-2xx response)                    |
+| ~RedditPostToMarkdown::InvalidResponseError~ | Reddit returned an unexpected JSON structure            |
+
+#+begin_src ruby
+begin
+  markdown = RedditPostToMarkdown.convert(url)
+rescue RedditPostToMarkdown::NotAPostError => e
+  warn "Not a post URL: #{e.message}"
+rescue RedditPostToMarkdown::FetchError => e
+  warn "Could not reach Reddit: #{e.message}"
+rescue RedditPostToMarkdown::InvalidResponseError => e
+  warn "Unexpected response: #{e.message}"
+end
+#+end_src
+
+* Output format
+
+The generated Markdown matches the output of the [[https://github.com/chauduyphanvu/reddit-markdown][reddit-markdown]] tool. A post renders as:
+
+#+begin_example
+**r/subreddit** | Posted by u/author ⬆️ 1k _( 2022-01-01 00:00:00 )_
+
+## Post Title
+
+Original post: [https://…](https://…)
+
+> Post body text, if any,
+> is block-quoted here.
+
+💬 ~ 42 replies
+
+---
+
+* 🟩 **[top_level_commenter](https://www.reddit.com/user/top_level_commenter)** ⬆️ 50 _( 2022-01-01 00:10:00 )_
+
+	Top-level comment body.
+
+	* 🟨 **[reply_author](https://www.reddit.com/user/reply_author)** ⬆️ 12 _( 2022-01-01 00:20:00 )_
+
+		Nested reply, indented one tab deeper per level.
+#+end_example
+
+Comment nesting is indicated by tab indentation and color-coded square emojis (🟩 🟨 🟧 🟦 🟪 🟥 🟫 ⬛️ ⬜️). ~u/username~ mentions in comment bodies are converted to links.
+
+* License
+
+MIT License. See [[file:LICENSE][LICENSE]].
+
+* Credits
+
+This gem is a Ruby port of the core post-download and Markdown-rendering functionality from [[https://github.com/chauduyphanvu/reddit-markdown][reddit-markdown]] by [[https://github.com/chauduyphanvu][Chau Duy Phan Vu]]. The output format, comment structure, color indicators, HTML entity handling, and filter logic are all derived from that project. Only the features relevant to converting a single post URL to a Markdown string have been ported; scheduling, authentication, file I/O, archiving, search, and other functionality from the original tool are intentionally omitted.
