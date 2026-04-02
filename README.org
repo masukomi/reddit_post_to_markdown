@@ -49,7 +49,7 @@ markdown = RedditPostToMarkdown.convert(
   url,
   filters: {
     keywords:    ["spam", "buy now"],     # case-insensitive substring match
-    authors:     ["AutoModerator"],       # exact username (case-sensitive)
+    authors:     ["AutoModerator"],       # exact username to exclude comments from (case-sensitive)
     min_upvotes: 5,                       # comments below this score are replaced
     regexes:     [/\bfree\b/i],           # Array of Regexp objects
     message:     "[ removed by filter ]"  # optional; see default below
@@ -75,11 +75,11 @@ markdown = RedditPostToMarkdown.convert(
 
 ** Errors
 
-| Exception                                  | When raised                                               |
-|--------------------------------------------+-----------------------------------------------------------|
-| ~RedditPostToMarkdown::NotAPostError~      | URL does not point to a Reddit post                       |
-| ~RedditPostToMarkdown::FetchError~         | HTTP request failed (non-2xx response)                    |
-| ~RedditPostToMarkdown::InvalidResponseError~ | Reddit returned an unexpected JSON structure            |
+| Exception                                    | When raised                                  |
+|----------------------------------------------+----------------------------------------------|
+| ~RedditPostToMarkdown::NotAPostError~        | URL does not point to a Reddit post          |
+| ~RedditPostToMarkdown::FetchError~           | HTTP request failed (non-2xx response)       |
+| ~RedditPostToMarkdown::InvalidResponseError~ | Reddit returned an unexpected JSON structure |
 
 #+begin_src ruby
 begin
@@ -129,3 +129,5 @@ MIT License. See [[file:LICENSE][LICENSE]].
 * Credits
 
 This gem is a Ruby port of the core post-download and Markdown-rendering functionality from [[https://github.com/chauduyphanvu/reddit-markdown][reddit-markdown]] by [[https://github.com/chauduyphanvu][Chau Duy Phan Vu]]. The output format, comment structure, color indicators, HTML entity handling, and filter logic are all derived from that project. Only the features relevant to converting a single post URL to a Markdown string have been ported; scheduling, authentication, file I/O, archiving, search, and other functionality from the original tool are intentionally omitted.
+
+Some additional functionality relative to this core behavior has been, and will be added.
