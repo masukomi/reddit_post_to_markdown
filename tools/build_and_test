@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+where=$(rake build | sed -e "s/.*built to //" -e "s/\.$//" )
+if [ $? -eq 0 ]; then
+	what=$(echo "$where" | sed -e "s/pkg\///" -e "s/-[[:digit:]].*//")
+	echo "installing $where"
+	gem uninstall $what
+	gem install $where
+else
+	echo "problems encountered building"
+	echo "run: rake build"
+fi
