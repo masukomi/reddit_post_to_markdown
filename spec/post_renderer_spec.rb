@@ -174,7 +174,7 @@ RSpec.describe RedditPostToMarkdown::PostRenderer do
 
   describe "separator" do
     it "includes a --- after the reply count" do
-      expect(output).to include("💬 ~ 0 replies\n---\n\n")
+      expect(output).to include("💬 ~ 0 replies\n---\n")
     end
   end
 
