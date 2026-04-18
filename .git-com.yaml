@@ -54,6 +54,10 @@ ticket-number:
   allow-empty: true
   data-type: integer
 meta_element_changelog:
+  change-type-key: "change-type"
+  commit-title-key: "commit-title"
+  before-group-heading: "["
+  after-group-heading: "]"
   display_aliases:
     fix: fixed
     add: added
