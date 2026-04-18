@@ -1,4 +1,5 @@
 require "httparty"
+require_relative "version"
 
 module RedditPostToMarkdown
   # Fetches Reddit post JSON via the public Reddit API.
@@ -8,7 +9,7 @@ module RedditPostToMarkdown
   class RedditClient
     include HTTParty
 
-    USER_AGENT = "RedditMarkdownConverter/1.0 (Safe Download Bot)"
+    USER_AGENT = "RedditPostToMarkdown/#{VERSION} (Safe Download Bot)"
 
     # Downloads the JSON data for a Reddit post URL.
     #

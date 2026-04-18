@@ -1,5 +1,6 @@
 require "spec_helper"
 require "reddit_post_to_markdown/errors"
+require "reddit_post_to_markdown/version"
 require "reddit_post_to_markdown/reddit_client"
 
 RSpec.describe RedditPostToMarkdown::RedditClient do
@@ -40,7 +41,7 @@ RSpec.describe RedditPostToMarkdown::RedditClient do
 
       it "sends the correct User-Agent header" do
         stub_request(:get, "https://www.reddit.com/r/ruby/comments/abc123/title.json")
-          .with(headers: { "User-Agent" => "RedditMarkdownConverter/1.0 (Safe Download Bot)" })
+          .with(headers: { "User-Agent" => "RedditPostToMarkdown/#{RedditPostToMarkdown::VERSION} (Safe Download Bot)" })
           .to_return(
             status: 200,
             body: valid_response.to_json,
