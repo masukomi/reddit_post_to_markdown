@@ -21,3 +21,4 @@ temp/*
 tmp/*
 .claude/*
 *.org.fold
+*.gem
