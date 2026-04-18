@@ -5,13 +5,8 @@ module RedditPostToMarkdown
   #
   # The output format matches the {https://github.com/chauduyphanvu/reddit-markdown
   # reddit-markdown} tool: post header, title, selftext, reply count, and a
-  # depth-indented comment tree with colour-coded emoji indicators.
+  # depth-indented comment tree.
   class PostRenderer
-    # Colour indicators used to visually distinguish comment nesting depth.
-    # Depth 0 uses the first colour, depth 1 the second, and so on. Depths
-    # beyond the length of the array reuse the last colour.
-    COLORS = ["🟩", "🟨", "🟧", "🟦", "🟪", "🟥", "🟫", "⬛️", "⬜️"].freeze
-
     # Replacement text used when a comment matches a filter and no custom
     # +:message+ is provided in the filters hash.
     DEFAULT_FILTERED_MESSAGE = "REMOVED DUE TO CUSTOM FILTER(S)"
@@ -201,10 +196,6 @@ module RedditPostToMarkdown
       field
     end
 
-    def color_for(depth)
-      COLORS[depth] || COLORS.last
-    end
-
     def count_all_replies
       total = @replies_data.length
       @replies_data.each do |reply_obj|
@@ -256,14 +247,13 @@ module RedditPostToMarkdown
       return if author.empty?
       return if author == "AutoModerator"
 
-      color    = color_for(0)
       ups      = data.fetch("ups", 0)
       upvotes  = format_upvotes(ups)
       ts       = format_timestamp(data["created_utc"])
       ts_str   = ts ? "_( #{ts} )_" : ""
       af       = author_field(author)
 
-      lines << "* #{color} **#{af}** #{upvotes} #{ts_str}\n\n"
+      lines << "* **#{af}** #{upvotes} #{ts_str}\n\n"
 
       body = data.fetch("body", "")
       return if body.strip.empty?
@@ -292,14 +282,13 @@ module RedditPostToMarkdown
       ups         = child_data.fetch("ups", 0)
       body        = child_data.fetch("body", "")
 
-      color    = color_for(cdepth)
       upvotes  = format_upvotes(ups)
       ts       = format_timestamp(child_data["created_utc"])
       ts_str   = ts ? "_( #{ts} )_" : ""
       af       = author_field(author)
       indent   = "\t" * cdepth
 
-      lines << "#{indent}* #{color} **#{af}** #{upvotes} #{ts_str}\n\n"
+      lines << "#{indent}* **#{af}** #{upvotes} #{ts_str}\n\n"
 
       return if body.strip.empty?
 

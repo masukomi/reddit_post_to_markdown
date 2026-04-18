@@ -97,7 +97,7 @@ end
 
 The generated Markdown matches the output of the [[https://github.com/chauduyphanvu/reddit-markdown][reddit-markdown]] tool. A post renders as:
 
-#+begin_example
+#+begin_src markdown
 **r/subreddit** | Posted by u/author ⬆️ 1k _( 2022-01-01 00:00:00 )_
 
 ## Post Title
@@ -111,16 +111,16 @@ Original post: [https://…](https://…)
 
 ---
 
-* 🟩 **[top_level_commenter](https://www.reddit.com/user/top_level_commenter)** ⬆️ 50 _( 2022-01-01 00:10:00 )_
+  *  **[top_level_commenter](https://www.reddit.com/user/top_level_commenter)** ⬆️ 50 _( 2022-01-01 00:10:00 )_
 
-	Top-level comment body.
+  	Top-level comment body.
 
-	* 🟨 **[reply_author](https://www.reddit.com/user/reply_author)** ⬆️ 12 _( 2022-01-01 00:20:00 )_
+  	*  **[reply_author](https://www.reddit.com/user/reply_author)** ⬆️ 12 _( 2022-01-01 00:20:00 )_
 
-		Nested reply, indented one tab deeper per level.
-#+end_example
+  		Nested reply, indented one tab deeper per level.
+#+end_src
 
-Comment nesting is indicated by tab indentation and color-coded square emojis (🟩 🟨 🟧 🟦 🟪 🟥 🟫 ⬛️ ⬜️). ~u/username~ mentions in comment bodies are converted to links.
+~u/username~ mentions in comment bodies are converted to links.
 
 * License
 

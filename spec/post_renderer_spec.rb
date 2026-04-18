@@ -183,10 +183,6 @@ RSpec.describe RedditPostToMarkdown::PostRenderer do
   describe "top-level comments" do
     let(:replies_data) { [make_comment] }
 
-    it "renders with green square color indicator" do
-      expect(output).to include("* 🟩 **")
-    end
-
     it "renders author as a link" do
       expect(output).to include("[commenter](https://www.reddit.com/user/commenter)")
     end
@@ -231,7 +227,7 @@ RSpec.describe RedditPostToMarkdown::PostRenderer do
     it "skips comments with empty body (but still renders header)" do
       comment = make_comment("body" => "   ")
       out = described_class.render(post_data, [comment])
-      expect(out).to include("* 🟩 **")
+      expect(out).to include("* **")
       expect(out).not_to include("\t ")
     end
 
@@ -278,12 +274,8 @@ RSpec.describe RedditPostToMarkdown::PostRenderer do
     end
     let(:replies_data) { [top_comment] }
 
-    it "renders depth-1 child with yellow square color" do
-      expect(output).to include("\t* 🟨 **")
-    end
-
     it "indents depth-1 child header with one tab" do
-      expect(output).to match(/^\t\* 🟨/)
+      expect(output).to match(/^\t\* \*\*/)
     end
 
     it "indents depth-1 child body with two tabs" do
@@ -306,8 +298,8 @@ RSpec.describe RedditPostToMarkdown::PostRenderer do
         make_comment("id" => "c1", "replies" => nested_replies(child_with_replies))
       end
 
-      it "renders depth-2 child with orange square color" do
-        expect(output).to include("\t\t* 🟧 **")
+      it "indents depth-2 child header with two tabs" do
+        expect(output).to include("\t\t* **")
       end
 
       it "indents depth-2 child body with three tabs" do
@@ -320,10 +312,10 @@ RSpec.describe RedditPostToMarkdown::PostRenderer do
         make_child(id: "c6", depth: 5, body: "deep", author: "deep_user")
       end
 
-      it "uses 🟥 for depth 5" do
+      it "indents depth-5 child header with five tabs" do
         top = make_comment("id" => "c1", "replies" => nested_replies(deep_child))
         out = described_class.render(post_data, [top])
-        expect(out).to include("* 🟥 **")
+        expect(out).to include("\t\t\t\t\t* **")
       end
     end
 
@@ -641,7 +633,7 @@ RSpec.describe RedditPostToMarkdown::PostRenderer do
       selftext_pos  = out.index("> body text")
       count_pos     = out.index("💬")
       separator_pos = out.index("---")
-      comment_pos   = out.index("* 🟩")
+      comment_pos   = out.index("* **")
 
       expect(header_pos).to be < title_pos
       expect(title_pos).to  be < link_pos
