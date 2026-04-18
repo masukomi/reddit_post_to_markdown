@@ -9,6 +9,7 @@ change-type:
     options:
         - fix
         - add
+        - change
         - refactor
         - clean-up
 breaking-indicator:
@@ -42,11 +43,8 @@ code-sections:
     options:
         - core
         - docs
-        - git
         - ui
-        - ux
-        - yaml
-        - config
+        - markdown
         - meta
         - tests
 ticket-number:
@@ -60,6 +58,7 @@ meta_element_changelog:
     display_aliases:
       fix: "fixed"
       add: "added"
+      change: "changed"
       refactor: "refactored"
       clean-up: "cleaned"
 
