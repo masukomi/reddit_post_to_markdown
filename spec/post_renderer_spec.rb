@@ -616,6 +616,57 @@ RSpec.describe RedditPostToMarkdown::PostRenderer do
     end
   end
 
+  # ─── post_image_urls ─────────────────────────────────────────────────────────
+
+  describe "#post_image_urls (via render)" do
+    def make_image_metadata(id, url)
+      { id => { "status" => "valid", "e" => "Image", "m" => "image/jpg",
+                "s" => { "u" => url, "x" => 1000, "y" => 800 } } }
+    end
+
+    it "returns no images when media_metadata is absent" do
+      post_data = make_post
+      out = described_class.render(post_data, [])
+      expect(out).not_to include("Images:")
+    end
+
+    it "transforms a preview.redd.it URL to i.redd.it and strips query params" do
+      preview_url = "https://preview.redd.it/abc123.jpg?width=1080&amp;format=pjpg&amp;auto=webp&amp;s=SIGNATUREHASH"
+      post_data = make_post("media_metadata" => make_image_metadata("abc123", preview_url))
+      out = described_class.render(post_data, [])
+      expect(out).to include("![no alt text](https://i.redd.it/abc123.jpg)")
+      expect(out).not_to include("preview.redd.it")
+      expect(out).not_to include("?width=")
+      expect(out).not_to include("&amp;")
+    end
+
+    it "transforms multiple images" do
+      meta = make_image_metadata("img1", "https://preview.redd.it/img1.jpg?width=1080&s=HASH1")
+             .merge(make_image_metadata("img2", "https://preview.redd.it/img2.png?width=1080&s=HASH2"))
+      post_data = make_post("media_metadata" => meta)
+      out = described_class.render(post_data, [])
+      expect(out).to include("![no alt text](https://i.redd.it/img1.jpg)")
+      expect(out).to include("![no alt text](https://i.redd.it/img2.png)")
+    end
+
+    it "skips non-Image entries (e.g. RedditVideo)" do
+      meta = { "vid1" => { "status" => "valid", "e" => "RedditVideo",
+                           "s" => { "u" => "https://preview.redd.it/vid1.mp4?s=HASH" } } }
+      post_data = make_post("media_metadata" => meta)
+      out = described_class.render(post_data, [])
+      expect(out).not_to include("Images:")
+    end
+
+    it "handles AnimatedImage using gif key when u is absent" do
+      meta = { "gif1" => { "status" => "valid", "e" => "AnimatedImage",
+                           "s" => { "gif" => "https://preview.redd.it/gif1.gif?s=HASH",
+                                    "mp4" => "https://preview.redd.it/gif1.mp4?s=HASH" } } }
+      post_data = make_post("media_metadata" => meta)
+      out = described_class.render(post_data, [])
+      expect(out).to include("![no alt text](https://i.redd.it/gif1.gif)")
+    end
+  end
+
   # ─── Full output structure ───────────────────────────────────────────────────
 
   describe "full output structure" do

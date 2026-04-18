@@ -54,29 +54,37 @@ module RedditPostToMarkdown
       lines = []
 
       # Post header
-      lines << "#{header_line}\n"
-      lines << "## #{post_title}\n"
-      lines << "Original post: [#{post_url}](#{post_url})\n"
+      lines << "#{header_line}"
+      lines << "## #{post_title}"
+      lines << "Original post: [#{post_url}](#{post_url})"
       lines << lock_message if post_locked?
 
       # Selftext
       if post_selftext && !post_selftext.strip.empty?
         decoded = decode_selftext(post_selftext)
-        lines << "> #{decoded.gsub("\n", "\n> ")}\n"
+        lines << "> #{decoded.gsub("\n", "\n> ")}"
+      end
+
+      image_urls = post_image_urls()
+      if image_urls.size > 0
+        lines << "### Images"
+        image_urls.each do |url|
+          lines << "![no alt text](#{url})"
+        end
+        lines << ""
       end
 
       # Reply count + separator
       total = count_all_replies
-      lines << "💬 ~ #{total} replies\n"
-      lines << "---\n\n"
+      lines << "💬 ~ #{total} replies"
+      lines << "---\n"
 
       # Top-level comments
       @replies_data.each do |reply_obj|
         render_top_level_reply(reply_obj, lines)
       end
 
-      lines << "\n"
-      lines.join
+      lines.join("\n")
     end
 
     private
@@ -111,6 +119,26 @@ module RedditPostToMarkdown
 
     def post_created_utc
       @post_data["created_utc"]
+    end
+
+    def post_image_urls
+      image_urls = []
+      media_metadata = @post_data["media_metadata"]
+      # a hash of hashes with some sort of hashed keys we don't care about
+      return image_urls unless media_metadata
+      media_metadata.each do |_hashed_key, metadata_hash|
+        next unless metadata_hash["e"] == "Image" || metadata_hash["e"] == "AnimatedImage"
+        src = metadata_hash["s"]
+        next unless src
+        url = src["u"] || src["gif"] || src["mp4"]
+        next unless url
+        # Reddit JSON HTML-encodes query strings; strip the signed params and
+        # rewrite preview.redd.it → i.redd.it so the URL serves the image directly
+        # instead of redirecting to an HTML wrapper page.
+        url = url.gsub("&amp;", "&").split("?")[0].sub("/preview.", "/i.")
+        image_urls << url
+      end
+      image_urls
     end
 
     def header_line
