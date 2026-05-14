@@ -22,3 +22,5 @@ tmp/*
 .claude/*
 *.org.fold
 *.gem
+instructions.org
+.release_me.yml
