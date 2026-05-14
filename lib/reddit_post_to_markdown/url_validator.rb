@@ -28,19 +28,17 @@ module RedditPostToMarkdown
       PATTERNS.any? { |pattern| url.match?(pattern) }
     end
 
-    # Strips common tracking parameters and the trailing slash from a Reddit URL.
+    # Strips the query string and trailing slash from a Reddit URL.
     #
-    # Removes query strings beginning with +?utm_source+, +?ref=+, or
-    # +?context=+, then strips any trailing slash. Leading and trailing
-    # whitespace is also removed.
+    # Removes everything from the first +?+ onward (tracking params, share IDs,
+    # etc. are never needed to fetch the post JSON), then strips any trailing
+    # slash. Leading and trailing whitespace is also removed.
     #
     # @param url [String] the URL to clean
     # @return [String] the cleaned URL
     def self.clean_url(url)
       url = url.to_s.strip
-      url = url.split("?utm_source").first
-      url = url.split("?ref=").first
-      url = url.split("?context=").first
+      url = url.split("?").first
       url.chomp("/")
     end
   end
