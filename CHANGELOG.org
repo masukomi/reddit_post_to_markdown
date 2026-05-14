@@ -1,3 +1,9 @@
+* v0.1.1
+
+** [fixed]
+- url cleaning function was too rigid
+- post_url used image url instead of permalink
+
 * v0.1.0
 
 ** [added]
