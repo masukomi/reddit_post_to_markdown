@@ -114,7 +114,8 @@ module RedditPostToMarkdown
     end
 
     def post_url
-      @post_data.fetch("url", "")
+      permalink = @post_data.fetch("permalink", "")
+      permalink.empty? ? @post_data.fetch("url", "") : "https://www.reddit.com#{permalink}"
     end
 
     def post_created_utc
@@ -123,6 +124,13 @@ module RedditPostToMarkdown
 
     def post_image_urls
       image_urls = []
+
+      if @post_data["post_hint"] == "image"
+        url = @post_data["url"]
+        image_urls << url if url && !url.empty?
+        return image_urls
+      end
+
       media_metadata = @post_data["media_metadata"]
       # a hash of hashes with some sort of hashed keys we don't care about
       return image_urls unless media_metadata
